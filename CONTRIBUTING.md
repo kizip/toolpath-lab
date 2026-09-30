@@ -1,53 +1,191 @@
-# 参与开发
+# 贡献指南
 
-项目保持精简，目标是"一屏读完路由、一个文件加一个策略"，因此改动请优先做加法，避免不必要的重构。
+感谢您对Toolpath Lab的关注！我们欢迎任何形式的贡献。
 
-## 环境
+## 如何贡献
 
-```bash
-pip install -r requirements.txt   # 后端只需要 numpy
-npm install                       # 只为桌面窗口装 Electron
+### 报告问题
 
-npm start                         # 独立窗口
-python -m toolpath_lab            # 只用后端 + 浏览器（调试前端更方便）
+如果您发现了bug或有功能建议，请在GitHub Issues中创建一个新的issue，并包含以下信息：
+
+1. **问题描述**：清晰简洁地描述问题
+2. **复现步骤**：列出复现问题的步骤
+3. **期望行为**：描述您期望的行为
+4. **实际行为**：描述实际发生的行为
+5. **环境信息**：
+   - Python版本
+   - 操作系统
+   - 相关依赖版本
+
+### 提交代码
+
+1. **Fork项目**
+   ```bash
+   # 在GitHub上fork项目
+   git clone https://github.com/your-username/toolpath-lab.git
+   cd toolpath-lab
+   ```
+
+2. **创建特性分支**
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
+
+3. **设置开发环境**
+   ```bash
+   pip install -r requirements.txt
+   pip install pytest pytest-cov
+   ```
+
+4. **进行修改**
+   - 遵循项目的代码风格
+   - 添加必要的注释
+   - 更新相关文档
+
+5. **编写测试**
+   ```bash
+   # 运行测试
+   pytest tests/
+
+   # 查看测试覆盖率
+   pytest tests/ --cov=toolpath_lab --cov-report=html
+   ```
+
+6. **提交更改**
+   ```bash
+   git add .
+   git commit -m "feat: 添加新功能描述"
+   git push origin feature/your-feature-name
+   ```
+
+7. **创建Pull Request**
+   - 在GitHub上创建Pull Request
+   - 填写PR描述，说明修改内容
+   - 等待代码审查
+
+## 代码规范
+
+### Python代码风格
+
+- 遵循PEP 8规范
+- 使用4个空格缩进
+- 行长度限制在88个字符（使用Black格式化）
+- 使用类型注解
+- 编写清晰的docstring
+
+### 提交信息规范
+
+使用[Conventional Commits](https://www.conventionalcommits.org/zh-hans/)规范：
+
+```
+<type>(<scope>): <subject>
+
+<body>
+
+<footer>
 ```
 
-前端不需要打包器：toolpath_lab/web 下的文件就是浏览器直接执行的文件，改完刷新即可
-（静态响应带 Cache-Control: no-store）。three.js 以源码形式放在 web/vendor/，升级时替换
-three.module.js、three.core.js、OrbitControls.js、RoomEnvironment.js 四个文件。
+类型（type）：
+- `feat`: 新功能
+- `fix`: 修复bug
+- `docs`: 文档更新
+- `style`: 代码格式调整
+- `refactor`: 代码重构
+- `test`: 测试相关
+- `chore`: 构建/工具相关
 
-## 提交前自检
+示例：
+```
+feat(planning): 添加螺旋刀路算法
 
-```bash
-python -m unittest discover -s tests        # 必须全绿
-python examples/headless_plan.py            # 库路径仍然可用
-node --check electron/main.mjs              # 桌面壳语法
-node --check toolpath_lab/web/js/main.js    # 前端语法（换成任一模块都可以）
+- 实现SpiralToolpath类
+- 添加参数验证
+- 添加单元测试
+
+Closes #123
 ```
 
-改了界面就打开窗口点一遍：参数面板能生成、视图能切、播放能拖、导出能出文件。
+## 开发流程
 
-## 代码约定
+### 添加新的刀路算法
 
-- **依赖方向**：core 不导入其它层；planning / simulation / export 只依赖 core；server 组装全部；
-  web 只通过 HTTP 说话。新增第三方依赖前先开 Issue 讨论。
-- **参数**：任何面向用户的开关都写成 ParameterSpec，不要另建配置系统——它同时驱动界面与校验。
-  暂时不开放的分支用 Choice(..., disabled=True) 标成"待拓展"，而不是删掉。
-- **单位与坐标**：毫米 / 秒 / 度（内部弧度）；右手系、Z 轴向上、XY 是加工平面。
-- **错误类型**：ParameterError（用户输入）、PlanningError（几何不可行）、ToolpathLabError（其它）。
-- **不变式**：区域边界逆时针且不含重复点；Toolpath 至少一段运动；Move 至少两个点。
-  这些在 `__post_init__` 里校验，请不要绕过。
-- **注释**：解释"为什么"，不要复述代码；文档字符串用英文，用户可见文案用中文。
+1. 在 `toolpath_lab/core/` 目录下创建新文件
+2. 继承 `ToolpathBase` 基类
+3. 实现 `generate_toolpath()` 方法
+4. 添加参数验证
+5. 编写单元测试
+6. 更新文档
 
-## 新增能力的步骤
+示例：
+```python
+from toolpath_lab.core.base import ToolpathBase, ToolPosition, ToolpathConfig
 
-1. 写实现（策略 / 形状 / 导出，见 docs/extending.md）；
-2. 注册并在对应的 `__init__.py` 中导入；
-3. 补测试（几何用数值断言，策略断言刀轨数 / 方向 / 安全高度，接口参考 tests/test_api.py）；
-4. 在 CHANGELOG.md 的"未发布"一节写一行；
-5. 若改变了用户可见行为，同步更新 README 与 docs。
+class MyNewToolpath(ToolpathBase):
+    """新的刀路算法"""
+    
+    def __init__(self, my_param: float, **kwargs):
+        super().__init__(**kwargs)
+        self.my_param = my_param
+        self._validate_params()
+    
+    def _validate_params(self):
+        """参数验证"""
+        if self.my_param <= 0:
+            raise ValueError("参数必须大于0")
+    
+    def generate_toolpath(self) -> ToolpathConfig:
+        """生成刀路"""
+        positions = []
+        # 实现刀路生成逻辑
+        return ToolpathConfig(positions=positions)
+```
 
-## Issue / PR
+### 添加新的刀具类型
 
-- 报告问题时请附上：/api/catalog 的版本号、POST /api/plan 的请求 JSON（或截图）、期望与实际结果。
-- PR 请保持单一主题，说明动机与验证方式（跑了哪些测试、贴出关键输出）。
+1. 在 `toolpath_lab/models/tool.py` 中添加新的枚举值
+2. 在 `ToolBuilder` 中添加创建方法
+3. 添加预设刀具（可选）
+4. 更新文档
+
+### 添加新的曲面类型
+
+1. 在 `toolpath_lab/models/surface.py` 中添加新的曲面类
+2. 继承 `Surface` 基类
+3. 实现必要的方法
+4. 在 `SurfaceFactory` 中注册
+5. 更新文档
+
+## 测试要求
+
+- 所有新功能必须包含单元测试
+- 测试覆盖率应达到80%以上
+- 测试文件放在 `tests/` 目录下
+- 测试文件命名：`test_<module>.py`
+
+运行测试：
+```bash
+# 运行所有测试
+pytest tests/
+
+# 运行特定测试
+pytest tests/test_spiral.py -v
+
+# 查看覆盖率
+pytest tests/ --cov=toolpath_lab --cov-report=term-missing
+```
+
+## 文档要求
+
+- 所有公开API必须有docstring
+- 使用中文注释（因为目标用户是中文用户）
+- 更新README.md（如果添加了新功能）
+- 更新CHANGELOG.md
+
+## 问题反馈
+
+如有任何问题，请通过以下方式联系：
+
+- GitHub Issues: https://github.com/large-su/toolpath-lab/issues
+- 邮箱: [your-email@example.com]
+
+感谢您的贡献！

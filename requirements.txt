@@ -1,4 +1,3 @@
-# Runtime dependency. ToolpathLab deliberately keeps this list at one entry:
-# the front-end ships as static files (three.js is vendored under
-# toolpath_lab/web/vendor), so there is no npm install and no build step.
-numpy>=1.24
+# Toolpath Lab 依赖包
+numpy>=1.21.0
+matplotlib>=3.4.0

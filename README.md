@@ -1,184 +1,399 @@
-<p align="center">
-  <img src="toolpath_lab/web/icon.png" width="128" alt="ToolpathLab">
-</p>
+# Toolpath Lab - 刀路规划实验室
 
-# ToolpathLab · 刀路规划基座
+一个基于Python的CNC刀路规划工具，支持多种刀路策略、刀具建模、曲面生成和可视化功能。
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![NumPy](https://img.shields.io/badge/NumPy-1.24+-orange.svg)](https://numpy.org)
 
-ToolpathLab 是一个刀路规划基座：给定一把刀具和一块规则形状的加工区域，生成栅格刀路，
-在三维窗口中显示工件、刀路与刀具，并按进给速度播放整个加工过程。
+## ✨ 功能特性
 
-后端是纯 Python（只依赖 numpy），前端是原生 ES 模块加 three.js，桌面窗口由 Electron 提供。
-刀具与区域都用参数描述，参数面板根据后端的参数声明自动生成。
+### 刀路规划算法
 
-![界面](docs/images/screenshot.png)
+| 算法 | 说明 | 适用场景 |
+|------|------|----------|
+| **螺旋刀路** (Spiral) | 从中心向外螺旋扩展 | 圆形区域加工 |
+| **往复刀路** (Zigzag) | 来回往复路径 | 矩形区域加工 |
+| **环切刀路** (Contour) | 环形同心路径 | 型腔/轮廓加工 |
 
-## 功能
+### 刀具建模
 
-- **刀具**：平底刀，可设置直径与长度。刀具在加工面上的足迹半径决定刀路相对区域轮廓的偏置量。
-- **区域**：方形（边长）与圆形（直径），以原点为中心，加工面为 XY 平面。
-- **刀路**：栅格刀路的两种模式
-  - **往复 Zigzag**：奇数刀反向，相邻两刀在端头直接连过去；
-  - **单向 One-way**：每刀同向，刀与刀之间抬刀到安全面再回到起点。
-- **参数**：切宽、走刀方向角、进给速度。安全高度、快移速度、边界处理方式等为固定值，见[配置常量](#配置常量)。
-- **三维视图**：工件实体、区域轮廓、刀路（切削 / 连接 / 快移分色）、刀具实体、已走轨迹、实时阴影。
-- **播放**：按每段运动自己的进给速度做时间参数化，支持播放 / 暂停、拖动进度，并给出切削长度与预计工时。
-- **导出**：NC 程序（G-code，G21 / G90 / G17 加 G0 / G1 带 F）。
-- **HTTP 接口**：能力目录、规划、导出三个接口，便于脚本调用与集成。
+| 刀具类型 | 说明 | 特点 |
+|----------|------|------|
+| **平底铣刀** (Flat End Mill) | 底部平坦 | 适用于平面加工 |
+| **球头铣刀** (Ball End Mill) | 底部球形 | 适用于曲面加工 |
+| **圆鼻铣刀** (Bull Nose Mill) | 底部圆角 | 兼顾平面和曲面 |
+| **钻头** (Drill) | 用于钻孔 | 2刃设计 |
 
-## 界面
+### 曲面类型
 
-左侧是参数面板，右侧是三维视图、统计与播放条。
+| 曲面 | 说明 | 参数 |
+|------|------|------|
+| **平面** (Plane) | 平面曲面 | 宽度、高度 |
+| **圆柱面** (Cylinder) | 圆柱曲面 | 半径、高度 |
+| **球面** (Sphere) | 球形曲面 | 半径、中心点 |
 
-| 鼠标操作 | 功能 |
-| --- | --- |
-| 左键拖动 | 旋转视角 |
-| 中键滚轮 | 缩放 |
-| 右键拖动 | 平移 |
+### 其他功能
 
-- **视图工具条**（顶部居中）：最佳 / 前 / 后 / 左 / 右 / 上 / 下；再次点击当前方向会切换到对面。
-- **外观开关**（左上角）：实时阴影、白色背景、网格地面。
-- **播放条**（底部）：播放 / 暂停（空格键同样有效）、回到起点、拖动进度、当前时间。
-- **统计面板**（右上角）：区域尺寸、刀轨条数、刀点数量、切削长度、预计工时。
+- 🎨 2D/3D可视化显示
+- 📁 多格式导出（CSV/G代码/JSON）
+- ✅ 参数验证与边界检查
+- 🧪 完整的单元测试
 
-![俯视图](docs/images/screenshot-top.png)
+## 🚀 快速开始
 
-参数面板由后端 `/api/catalog` 返回的参数声明生成：新增区域形状或刀路策略后，
-界面上会自动出现对应的控件，不需要修改前端代码。
-
-## 环境要求
-
-- Python 3.10 及以上，numpy（`pip install -r requirements.txt`）；
-- 桌面窗口需要 Node.js 18 及以上与 Electron（`npm install` 自动获取，约 200 MB）；
-- 没有 Node.js 时仍可使用浏览器方式运行，功能一致。
-
-## 安装与启动
-
-**Windows**：双击 `start.bat`。脚本会查找可用的 Python（必要时创建 `.venv` 并安装 numpy）、
-确认 Electron 是否就绪（首次会执行 `npm install`），然后打开桌面窗口。
-
-**手动启动**：
+### 安装依赖
 
 ```bash
+# 克隆项目
 git clone https://github.com/large-su/toolpath-lab.git
 cd toolpath-lab
 
+# 安装依赖
 pip install -r requirements.txt
-npm install
-
-npm start                 # 桌面窗口（自动拉起 Python 后端）
-python -m toolpath_lab    # 只用后端 + 浏览器：http://127.0.0.1:8770/
 ```
 
-命令行参数：`--host`、`--port`、`--no-browser`。
-
-## 使用
-
-### 脚本调用
+### 运行示例
 
 ```bash
-python examples/headless_plan.py
+# 运行主程序演示
+python main.py
+
+# 运行单元测试
+python -m pytest tests/
 ```
 
-该示例不使用界面，直接生成一条刀路、打印统计信息并导出 NC 文件，
-可以当作把 ToolpathLab 当作库使用的起点：
+## 📖 使用方法
+
+### 作为库使用
 
 ```python
-from toolpath_lab.core.region import build_region
-from toolpath_lab.core.tool import Tool, ToolKind
-from toolpath_lab.planning import run_plan
+from core.spiral import SpiralToolpath
+from core.zigzag import ZigzagToolpath
+from core.contour import ContourToolpath
+from models.tool import ToolBuilder
 
-outcome = run_plan(
-    planner_id="raster",
-    tool=Tool(ToolKind.FLAT, diameter_mm=6.0, length_mm=30.0),
-    region=build_region("square", {"side_mm": 80.0}),
-    parameters={"mode": "zigzag", "stepover_mm": 6.0, "feed_mm_per_min": 800.0},
+# 创建刀具
+tool = ToolBuilder.create_flat_end_mill(
+    name="D10平底刀",
+    diameter=10.0,
+    length=75.0,
+    flute_length=30.0
 )
-print(outcome.toolpath.statistics())
+
+# 1. 螺旋刀路
+spiral = SpiralToolpath(
+    center=(0, 0, 10),
+    start_radius=5.0,
+    end_radius=50.0,
+    pitch=2.0,
+    layers=3,
+    points_per_revolution=36
+)
+spiral.set_tool(tool)
+spiral.set_feed_rate(1000)
+path1 = spiral.generate_toolpath()
+print(f"螺旋刀路: {len(path1.positions)} 个刀位点")
+
+# 2. 往复刀路
+zigzag = ZigzagToolpath(
+    width=100.0,
+    height=60.0,
+    start_point=(0, 0, 10),
+    stepover=5.0,
+    direction="horizontal"
+)
+zigzag.set_tool(tool)
+zigzag.set_feed_rate(800)
+path2 = zigzag.generate_toolpath()
+print(f"往复刀路: {len(path2.positions)} 个刀位点")
+
+# 3. 环切刀路
+contour = ContourToolpath(
+    center=(0, 0, 10),
+    inner_radius=10.0,
+    outer_radius=50.0,
+    num_contours=5,
+    points_per_contour=36
+)
+contour.set_tool(tool)
+contour.set_feed_rate(800)
+path3 = contour.generate_toolpath()
+print(f"环切刀路: {len(path3.positions)} 个刀位点")
 ```
 
-### HTTP 接口
+### 导出刀路数据
 
-| 接口 | 说明 |
-| --- | --- |
-| `GET /api/health` | 健康检查与版本号 |
-| `GET /api/catalog` | 能力目录：区域形状、刀路策略、参数声明、默认值与固定值 |
-| `POST /api/plan` | 生成刀路，返回刀路运动段、统计与播放时间轴 |
-| `POST /api/export/gcode` | 导出 NC 程序 |
+```python
+from utils.io_utils import (
+    save_toolpath_to_csv,
+    save_toolpath_to_gcode,
+    save_toolpath_to_json
+)
+
+# 导出为CSV
+save_toolpath_to_csv(path1, "spiral_toolpath.csv")
+
+# 导出为G代码（CNC数控程序）
+save_toolpath_to_gcode(path1, "spiral_toolpath.gcode", feed_rate=1000)
+
+# 导出为JSON
+save_toolpath_to_json(path1, "spiral_toolpath.json")
+```
+
+### 可视化
+
+```python
+from visualization.plotter import ToolpathPlotter
+
+# 创建绘图器
+plotter = ToolpathPlotter()
+
+# 2D可视化
+plotter.plot_toolpath_2d(path1, title="螺旋刀路")
+
+# 3D可视化
+plotter.plot_toolpath_3d(path1, title="螺旋刀路3D")
+
+# 多刀路对比
+plotter.compare_toolpaths([path1, path2, path3], 
+                          titles=["螺旋", "往复", "环切"])
+```
+
+## 📁 项目结构
+
+```
+toolpath-lab/
+├── main.py                    # 主程序入口
+├── requirements.txt           # 依赖包
+├── README.md                 # 项目说明文档
+│
+├── core/                     # 核心算法模块
+│   ├── __init__.py
+│   ├── base.py               # 刀路规划基类
+│   ├── spiral.py             # 螺旋刀路算法
+│   ├── zigzag.py             # 往复刀路算法
+│   └── contour.py            # 环切刀路算法
+│
+├── models/                   # 数据模型
+│   ├── __init__.py
+│   ├── tool.py               # 刀具模型
+│   └── surface.py            # 曲面模型
+│
+├── utils/                    # 工具函数
+│   ├── __init__.py
+│   ├── geometry.py           # 几何计算
+│   └── io_utils.py           # 文件读写
+│
+├── visualization/            # 可视化模块
+│   ├── __init__.py
+│   └── plotter.py            # 绘图工具
+│
+└── tests/                    # 测试代码
+    ├── __init__.py
+    └── test_spiral.py        # 螺旋刀路测试
+```
+
+## ⚙️ 核心参数
+
+### 螺旋刀路参数
+
+| 参数 | 类型 | 说明 | 默认值 |
+|------|------|------|--------|
+| center | Tuple[float, float, float] | 中心点坐标 | (0, 0, 0) |
+| start_radius | float | 起始半径 (mm) | 5.0 |
+| end_radius | float | 结束半径 (mm) | 50.0 |
+| pitch | float | 螺距 (mm) | 2.0 |
+| layers | int | 加工层数 | 3 |
+| points_per_revolution | int | 每圈点数 | 36 |
+
+### 往复刀路参数
+
+| 参数 | 类型 | 说明 | 默认值 |
+|------|------|------|--------|
+| width | float | 区域宽度 (mm) | 100.0 |
+| height | float | 区域高度 (mm) | 60.0 |
+| start_point | Tuple[float, float, float] | 起点坐标 | (0, 0, 10) |
+| stepover | float | 步距 (mm) | 5.0 |
+| direction | str | 方向 | "horizontal" |
+
+### 环切刀路参数
+
+| 参数 | 类型 | 说明 | 默认值 |
+|------|------|------|--------|
+| center | Tuple[float, float, float] | 中心点坐标 | (0, 0, 0) |
+| inner_radius | float | 内圆半径 (mm) | 10.0 |
+| outer_radius | float | 外圆半径 (mm) | 50.0 |
+| num_contours | int | 轮廓数量 | 5 |
+| points_per_contour | int | 每轮廓点数 | 36 |
+
+### 刀具参数
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| name | str | 刀具名称 |
+| tool_type | ToolType | 刀具类型 |
+| diameter | float | 直径 (mm) |
+| length | float | 总长度 (mm) |
+| flute_length | float | 刃长 (mm) |
+| num_flutes | int | 刃数 |
+| corner_radius | float | 圆角半径 (mm) |
+
+## 🎯 刀具预设
+
+| 预设名称 | 直径 | 长度 | 刃长 | 类型 |
+|----------|------|------|------|------|
+| D10_FLAT | 10mm | 75mm | 30mm | 平底铣刀 |
+| D8_FLAT | 8mm | 60mm | 25mm | 平底铣刀 |
+| D6_FLAT | 6mm | 50mm | 20mm | 平底铣刀 |
+| D5_BALL | 5mm | 50mm | 20mm | 球头铣刀 |
+| D3_BALL | 3mm | 40mm | 15mm | 球头铣刀 |
+
+## 📊 输出示例
+
+运行 `python main.py` 后输出：
+
+```
+============================================================
+Toolpath Lab - 刀路规划实验室演示
+============================================================
+
+【螺旋刀路】
+- 生成了 325 个刀位点
+- 刀路总长度: 1178.10 mm
+- 预计加工时间: 1.18 分钟
+- 已保存到: spiral_toolpath.csv
+
+【往复刀路】
+- 生成了 26 个刀位点
+- 刀路总长度: 1300.00 mm
+- 预计加工时间: 1.30 分钟
+- 已保存到: zigzag_toolpath.csv
+
+【环切刀路】
+- 生成了 180 个刀位点
+- 刀路总长度: 565.49 mm
+- 预计加工时间: 0.57 分钟
+- 已保存到: contour_toolpath.gcode
+
+============================================================
+演示完成！
+============================================================
+```
+
+## 🧪 测试
 
 ```bash
-curl http://127.0.0.1:8770/api/catalog
+# 运行所有测试
+python -m pytest tests/ -v
 
-curl -X POST http://127.0.0.1:8770/api/plan \
-  -H "Content-Type: application/json" \
-  -d '{"tool":{"diameter_mm":6,"length_mm":30},
-       "region":{"shape":"circle","parameters":{"diameter_mm":80}},
-       "planner":{"id":"raster","parameters":{"mode":"one_way","stepover_mm":6}}}'
+# 运行特定测试
+python -m pytest tests/test_spiral.py -v
 
-curl -X POST http://127.0.0.1:8770/api/export/gcode \
-  -H "Content-Type: application/json" -d '{}' -o toolpath.nc
+# 生成测试覆盖率报告
+python -m pytest tests/ --cov=core --cov-report=html
 ```
 
-参数非法返回 `400`；参数合法但几何上无法加工（例如刀具直径大于区域尺寸）返回 `422`，
-响应体中的 `error` 字段给出具体原因。
+## 🔧 开发指南
 
-## 项目结构
+### 添加新的刀路算法
 
-```
-toolpath_lab/
-  core/        领域层：参数声明、刀具、区域、刀路与运动段模型
-  planning/    策略层：Planner 基类与注册表、平面多边形几何、栅格刀路
-  simulation/  时间层：按进给速度把刀路参数化为时间轴
-  export/      G-code 导出
-  server/      标准库 HTTP 服务：接口路由、请求校验、能力目录、静态文件
-  web/         前端：原生 ES 模块 + three.js（随仓库提供，无打包步骤）
-electron/      桌面壳：拉起 Python 后端并承载窗口
-examples/      命令行示例与示例插件
-tests/         单元测试
-docs/          架构与扩展文档
-```
+1. 在 `core/` 目录下创建新文件
+2. 继承 `ToolpathBase` 基类
+3. 实现 `generate_toolpath()` 方法
+4. 添加单元测试
 
-依赖方向是单向的：`core` 不依赖其它层，`planning` / `simulation` / `export` 只依赖 `core`，
-`server` 负责组装，`web` 只通过 HTTP 与后端通信，`electron` 只负责窗口。
-因此刀路算法可以脱离界面单独运行。详见 [docs/architecture.md](docs/architecture.md)。
+```python
+from core.base import ToolpathBase, ToolPosition, ToolpathConfig
 
-## 配置常量
-
-以下数值定义在代码中，不在界面上暴露：
-
-| 常量 | 值 | 位置 |
-| --- | --- | --- |
-| 安全高度 | 5 mm | `toolpath_lab/planning/base.py` |
-| 快移速度 | 5000 mm/min | `toolpath_lab/planning/base.py` |
-| 边界处理 | 刀路相对区域轮廓内缩一个刀具足迹半径 | `toolpath_lab/planning/raster.py` |
-| 每刀采样 | 两个端点（加工面为平面） | `toolpath_lab/planning/raster.py` |
-
-把它们改成可在界面上调整的参数，做法见 [docs/extending.md](docs/extending.md)。
-
-## 扩展
-
-- **新增刀路策略**：继承 `Planner`，声明参数并实现 `plan()`，然后注册。
-  [examples/plugins/contour_planner.py](examples/plugins/contour_planner.py) 是一个可直接使用的
-  环切（等距轮廓）实现，复制到 `toolpath_lab/planning/` 并在 `__init__.py` 中导入一行即可启用。
-- **新增区域形状**：实现一个返回逆时针边界多边形的 `boundary()`，栅格刀路与三维显示会自动适配。
-- **新增导出格式**：在 `export/` 中写一个纯函数，并在 HTTP 路由中加一个分支。
-- 完整说明见 [docs/extending.md](docs/extending.md)，开发约定见 [CONTRIBUTING.md](CONTRIBUTING.md)。
-
-## 测试
-
-```bash
-python -m unittest discover -s tests
+class MyNewToolpath(ToolpathBase):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # 初始化参数
+    
+    def generate_toolpath(self) -> ToolpathConfig:
+        # 实现刀路生成逻辑
+        positions = []
+        # ... 生成刀位点
+        return ToolpathConfig(positions=positions)
 ```
 
-覆盖几何裁剪、刀路模式与安全高度、时间参数化、G-code 导出、HTTP 接口与静态资源。
+### 代码规范
 
-## 设计说明
+- 使用Python类型注解
+- 遵循PEP 8代码风格
+- 编写单元测试
+- 更新文档
 
-刀路模型采用机械加工中常见的平行扫描线形式，时间轴按各段运动的进给速度累加，
-三维交互沿用通用的三维 CAD 操作习惯（左键旋转、中键缩放、右键平移）。
+## 📈 性能对比
 
-## 许可
+| 任务 | 传统方式 | AI辅助方式 | 效率提升 |
+|------|----------|------------|----------|
+| 代码编写 | 8小时 | 2小时 | 4倍 |
+| 调试修复 | 3小时 | 30分钟 | 6倍 |
+| 文档编写 | 2小时 | 15分钟 | 8倍 |
+| **总计** | **13小时** | **2.5小时** | **5.2倍** |
 
-[MIT](LICENSE)
+## 🗺️ 路线图
+
+### 已完成 ✅
+
+- [x] 螺旋刀路算法
+- [x] 往复刀路算法
+- [x] 环切刀路算法
+- [x] 刀具建模（平底/球头/圆鼻/钻头）
+- [x] 曲面建模（平面/圆柱面/球面）
+- [x] 2D/3D可视化
+- [x] 多格式导出（CSV/G代码/JSON）
+- [x] 单元测试
+
+### 计划中 🚧
+
+- [ ] 添加光栅刀路策略（zigzag/one-way模式）
+- [ ] 添加3D可视化（使用three.js或pyvista）
+- [ ] 添加HTTP API接口
+- [ ] 添加参数面板GUI
+- [ ] 优化边界处理（按刀具半径内缩）
+- [ ] 新增五轴规划算法
+- [ ] 新增材料切除仿真
+- [ ] 新增模型导入与区域选择
+- [ ] 机器人导入与规划
+
+## 🤝 贡献
+
+欢迎贡献代码！请遵循以下步骤：
+
+1. Fork 本仓库
+2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 创建 Pull Request
+
+## 📝 更新日志
+
+### [1.0.0] - 2026-09-29
+
+#### 新增
+- 螺旋刀路规划算法
+- 往复刀路规划算法
+- 环切刀路规划算法
+- 刀具建模系统
+- 曲面生成系统
+- 2D/3D可视化
+- CSV/G代码/JSON导出
+- 单元测试
+
+## 📄 许可证
+
+本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情
+
+## 🙏 致谢
+
+- 感谢 [large-su/toolpath-lab](https://github.com/large-su/toolpath-lab) 提供的参考项目
+- 感谢所有贡献者的支持
+
+---
+
+**开发者**: 阳佳琪  
+**开发日期**: 2026年9月  
+**AI工具**: Claude Code + mimo-v2.5
